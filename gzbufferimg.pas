@@ -24,6 +24,10 @@ unit gzbufferimg;
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
+// Note that while this part of code is licensed under MIT license, resulting
+// of built program as whole would be GPL v2 since it depends of MiniLZO GPL v2
+// or later license. Unless GPL components were stripped out.
+//
 
 {$mode ObjFPC}{$H+}
 
