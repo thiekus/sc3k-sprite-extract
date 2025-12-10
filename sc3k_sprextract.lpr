@@ -59,6 +59,10 @@ end;
 const
   PATH_SLASH = {$IF DEFINED (windows)} '\' {$ELSE} '/' {$ENDIF};
 
+  GZBUFFER_TYPE_IMAGE      = $62B9DA24;
+  GZBUFFER_TYPE_SPRITE     = $00000000;
+  GZBUFFER_TYPE_SJS_SPRITE = $BAB52D54;
+
 var
   parCount, parIdx, parLen, i, imgCount, sprCount: Integer;
   param, inPath, outPath, outFile, typeName: String;
@@ -135,17 +139,28 @@ begin
     for i := 0 to ixf.Count - 1 do begin
       entry := ixf.Entries[i];
       case entry.ResourceType of
-        $62B9DA24: curType := etImageBuffer;
-        $00000000: curType := etSpriteBuffer;
+        GZBUFFER_TYPE_IMAGE: curType := etImageBuffer;
+        GZBUFFER_TYPE_SPRITE,
+        GZBUFFER_TYPE_SJS_SPRITE: curType := etSpriteBuffer;
         else
           Continue; // Skip this type
       end;
       if curType = etSpriteBuffer then
         typeName := 'sprite'
-      else
-        typeName := 'image';
-      outFile := outPath + PATH_SLASH + Format('%s_%.8x_%.8x.bmp',
-        [typeName, entry.GroupID, entry.Instance]);
+      else begin
+        // This is the tricky one, in SJS they use resource type $62B9DA24 but
+        // actually it's sprite
+        if DetectGZBufferImageIsActuallySprite(entry.RawData) then begin
+          curType := etSpriteBuffer;
+          typeName := 'sprite';
+        end
+        else
+          typeName := 'image'; // Real GZBuffer Image found at UI elements
+      end;
+      // For who asks why not use %.8x instead, because it triggers ERangeCheck
+      // exception on debug mode for no reason.
+      outFile := outPath + PATH_SLASH + Format('%s_%s_%s.bmp',
+        [typeName, IntToHex(entry.GroupID, 8), IntToHex(entry.Instance, 8)]);
       fs := TFileStream.Create(outFile, fmCreate);
       try
         fs.Position := 0;
@@ -154,8 +169,8 @@ begin
             // Just ordinary BMP file, usually on first release of SC3K
             fs.Write(entry.RawData^, entry.RawLength);
             Writeln(
-              Format('* Image Group=%.8x Instance=%.8x Format=Uncompressed BMP',
-              [entry.GroupID, entry.Instance]));
+              Format('* Image Group=%s Instance=%s Format=Uncompressed BMP',
+              [IntToHex(entry.GroupID, 8), IntToHex(entry.Instance, 8)]));
           end
           else begin
             // SC3U has buffer compressed by RefPack
@@ -166,8 +181,8 @@ begin
               DecompressGZBufferImageToBmp32StreamEx(entry.RawData,
                 entry.RawLength, fs, imgInfo);
             Writeln(
-              Format('* Image Group=%.8x Instance=%.8x Format=%s Compression=RefPack Size=%dx%d',
-              [entry.GroupID, entry.Instance,
+              Format('* Image Group=%s Instance=%s Format=%s Compression=RefPack Size=%dx%d',
+              [IntToHex(entry.GroupID, 8), IntToHex(entry.Instance, 8),
               GZBufferColorTypeToString(imgInfo.ColorType),
               imgInfo.Width, imgInfo.Height]));
           end;
@@ -182,8 +197,8 @@ begin
             DecompressGZBufferSpriteToBmp32StreamEx(entry.RawData,
               entry.RawLength, fs, sprInfo);
           Writeln(
-            Format('* Sprite Group=%.8x Instance=%.8x Format=%s Compression=%s Size=%dx%d',
-            [entry.GroupID, entry.Instance,
+            Format('* Sprite Group=%s Instance=%s Format=%s Compression=%s Size=%dx%d',
+            [IntToHex(entry.GroupID, 8), IntToHex(entry.Instance, 8),
             GZBufferColorTypeToString(sprInfo.ColorType),
             GZBufferSpriteCompressionTypeToString(sprInfo.CompressionType),
             sprInfo.Width, sprInfo.Height]));

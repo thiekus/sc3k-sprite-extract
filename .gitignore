@@ -24,8 +24,10 @@
 backup/
 lib/
 
-# SC3K testing dat
+# SC3K testing files
 *.dat
+*.ixf
+*.sjs
 
 # Linux built executable (which no extensions)
 sc3k_sprextract

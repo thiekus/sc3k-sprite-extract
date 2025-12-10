@@ -167,6 +167,7 @@ type
   function DetectGZBufferImageType(const HeaderPtr: Pointer): TGZBufferImageType;
   function DetectGZBufferSpriteCompressionType(const Source: Pointer;
     const SourceLength: Integer): TGZBufferSpriteCompressionType;
+  function DetectGZBufferImageIsActuallySprite(const Source: Pointer): Boolean;
 
   function DecompressGZBufferImageToRaw(const Source: Pointer;
     const SourceLength: Integer; var ImageInfo: TGZBufferImageInfo): PByte;
@@ -326,6 +327,16 @@ begin
       and (ph^.UncompressedLength > 0) then
       Result := sctMiniLZO;
   end;
+end;
+
+// This function exists because whoever programmer at Maxis put sprite data
+// on resource type $62B9DA24 on *.sjs suitcase file which suppossed for
+// image buffer, while sprites should be on designated type $00000000
+function DetectGZBufferImageIsActuallySprite(const Source: Pointer): Boolean;
+begin
+  // On real image buffer, all 4 bytes is occupied and only contains 2 to
+  // indicate bytes per pixel. Otherwise it would be $105, $107, or $03
+  Result := PUInt32(Source)^ <> 2;
 end;
 
 // Convert RGB 565 to BGRA32 with Alpha always opaque
